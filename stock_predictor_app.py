@@ -38,7 +38,8 @@ with st.sidebar:
 
 #---------------------- Data ----------------------
 
-symbol = "HDFCBANK.NS" df = yf.download(symbol, period="1y", interval="1d", progress=False)
+symbol = "HDFCBANK.NS" 
+df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
 if df.empty:
     st.error("No data found.") 
