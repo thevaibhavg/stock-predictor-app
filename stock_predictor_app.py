@@ -7,133 +7,134 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
-
-# ---------------------- Plot Function (FIXED POSITION) ----------------------
-def plot_data(df, close_col):
-    fig = go.Figure()
-
-    fig.add_trace(go.Scatter(
-        x=df.index, y=df[close_col],
-        mode='lines+markers',
-        name='Close Price',
-        line=dict(color='blue')))
-
-    fig.update_layout(
-        title='📉 Stock Close Price (Last 60 Days)',
-        xaxis_title='Date',
-        yaxis_title='Price (INR)',
-        margin=dict(l=20, r=20, t=30, b=20),
-        height=400,
-        template='plotly_white'
-    )
-
-    return fig
+from streamlit_lottie import st_lottie
+import requests
 
 # ---------------------- Page Setup ------------------------
 st.set_page_config(page_title="Stock Predictor", layout="wide")
 
+# ---------------------- CSS Styling ------------------------
 st.markdown("""
     <style>
         .title {
             font-size: 36px;
             font-weight: bold;
-            color: #1f77b4;
+            color: #0E76A8;
         }
         .subtitle {
-            font-size: 20px;
+            font-size: 18px;
             color: #444;
         }
         .stButton>button {
-            background-color: #1f77b4;
+            background-color: #0E76A8;
             color: white;
             font-weight: bold;
             border-radius: 8px;
             padding: 10px 18px;
         }
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------------- Sidebar Menu ----------------------
+# ---------------------- Load Lottie Animation ------------------------
+def load_lottieurl(url):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+lottie_chart = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_c9fmlg.json")
+
+# ---------------------- Sidebar Navigation ------------------------
 with st.sidebar:
     selected = option_menu(
-        "Navigation", ["📊 Predict", "ℹ️ About"],
-        icons=["bar-chart-line", "info-circle"],
-        menu_icon="cast", default_index=0)
+        "📋 Main Menu",
+        ["📊 Predict", "📉 Chart", "ℹ️ About"],
+        icons=["bar-chart-line", "graph-up", "info-circle"],
+        default_index=0
+    )
 
-# ---------------------- Title ----------------------
-st.markdown('<div class="title">📈 Stock Price & Trend Predictor</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Smart predictions using ML & technical indicators</div>', unsafe_allow_html=True)
+# ---------------------- Hero Header ------------------------
+st.markdown("""
+    <div style="background-color:#0E76A8;padding:20px;border-radius:10px">
+        <h1 style="color:white;text-align:center;">📈 Stock Predictor App</h1>
+        <p style="color:white;text-align:center;">Smart machine learning predictions with interactive charts</p>
+    </div>
+    <br>
+""", unsafe_allow_html=True)
 
-# ---------------------- About Page ----------------------
+# ---------------------- About Page ------------------------
 if selected == "ℹ️ About":
+    st_lottie(lottie_chart, height=250, key="about-lottie")
     st.markdown("""
-        This is a professional-grade stock prediction app using:
-        - Machine learning (Random Forest)
-        - Technical indicators (MA, RSI, Returns)
-        - Interactive visualizations
-        - Extendable to include news sentiment and LSTM models
+    ### ℹ️ About the App
+    - Built with ❤️ using **Streamlit**, **Plotly**, and **Machine Learning**
+    - Predicts future stock **price** and **trend direction**
+    - Features include:
+        - Interactive charts
+        - Technical indicators
+        - Professional UI
     """)
     st.stop()
 
-# ---------------------- Prediction Page ----------------------
+# ---------------------- Prediction Section ------------------------
+if selected == "📊 Predict":
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
+    with col2:
+        st_lottie(lottie_chart, height=100, key="predict-lottie")
 
-# Input Section
-col1, col2 = st.columns([3, 1])
-with col1:
-    symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
-with col2:
-    st.image("https://companiesmarketcap.com/img/company-logos/512/HDFCBANK.NS.png", width=80)
+    df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
-df = yf.download(symbol, period="1y", interval="1d", progress=False)
+    if df.empty:
+        st.error("No data found. Please check the symbol.")
+        st.stop()
 
-if df.empty:
-    st.error("No data found. Please check the symbol.")
-    st.stop()
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(col).strip() for col in df.columns.values]
+    else:
+        df.columns = df.columns.str.strip()
 
-# Clean column names
-if isinstance(df.columns, pd.MultiIndex):
-    df.columns = ['_'.join(col).strip() for col in df.columns.values]
-else:
-    df.columns = df.columns.str.strip()
+    col_map = {}
+    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        match = [col for col in df.columns if col.lower().startswith(base.lower())]
+        col_map[base] = match[0] if match else None
 
-# Column Mapping using startswith
-col_map = {}
-for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
-    match = [col for col in df.columns if col.lower().startswith(base.lower())]
-    col_map[base] = match[0] if match else None
+    if not all(col_map.values()):
+        st.error("Some required columns missing.")
+        st.write("Returned columns:", list(df.columns))
+        st.stop()
 
-if not all(col_map.values()):
-    st.error("Some required columns missing.")
-    st.write("Returned columns:", list(df.columns))
-    st.stop()
+    df = df.dropna(subset=col_map.values())
 
-# Drop missing rows
-df = df.dropna(subset=col_map.values())
+    def generate_features(df):
+        close = col_map['Close']
+        df['MA_5'] = df[close].rolling(5).mean()
+        df['MA_20'] = df[close].rolling(20).mean()
+        df['Daily_Return'] = df[close].pct_change()
+        delta = df[close].diff()
+        gain = delta.where(delta > 0, 0).rolling(14).mean()
+        loss = -delta.where(delta < 0, 0).rolling(14).mean()
+        rs = gain / (loss + 1e-10)
+        df['RSI_14'] = 100 - (100 / (1 + rs))
+        return df
 
-# Feature Engineering
-def generate_features(df):
-    close = col_map['Close']
-    df['MA_5'] = df[close].rolling(5).mean()
-    df['MA_20'] = df[close].rolling(20).mean()
-    df['Daily_Return'] = df[close].pct_change()
-    delta = df[close].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / (loss + 1e-10)
-    df['RSI_14'] = 100 - (100 / (1 + rs))
-    return df
+    df = generate_features(df).dropna()
 
-df = generate_features(df).dropna()
+    min_date = df.index.min().date()
+    max_date = df.index.max().date()
 
-min_date = df.index.min().date()
-max_date = df.index.max().date()
+    col1, col2 = st.columns(2)
+    with col1:
+        target_date = st.date_input("📅 Select prediction date", value=max_date, min_value=min_date, max_value=max_date)
+    with col2:
+        st.write("")
 
-target_date = st.date_input("📅 Select prediction date", value=max_date, min_value=min_date, max_value=max_date)
+    with st.expander("⚙️ Advanced Options"):
+        use_scaler = st.checkbox("Use Standard Scaler", value=True)
+        n_estimators = st.slider("Number of Trees", 50, 300, 100, step=50)
 
-# Tabs
-tab1, tab2 = st.tabs(["📈 Prediction", "📉 Historical Chart"])
-
-with tab1:
     if st.button("🚀 Predict"):
         with st.spinner("Training model and predicting..."):
             try:
@@ -156,28 +157,66 @@ with tab1:
                     y_clf = df_train['Trend'].iloc[:-1]
 
                     scaler = StandardScaler()
-                    X_scaled = scaler.fit_transform(X)
+                    X_scaled = scaler.fit_transform(X) if use_scaler else X
 
-                    reg_model = RandomForestRegressor(n_estimators=100, random_state=42)
-                    clf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+                    reg_model = RandomForestRegressor(n_estimators=n_estimators, random_state=42)
+                    clf_model = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
 
                     reg_model.fit(X_scaled, y_reg)
                     clf_model.fit(X_scaled, y_clf)
 
                     X_target = df_target[features]
-                    X_target_scaled = scaler.transform(X_target)
+                    X_target_scaled = scaler.transform(X_target) if use_scaler else X_target
 
                     price = reg_model.predict(X_target_scaled)[0]
                     trend = clf_model.predict(X_target_scaled)[0]
 
                     col1, col2 = st.columns(2)
-                    col1.metric(label="💰 Predicted Price", value=f"₹{price:.2f}")
-                    col2.metric(label="📈 Predicted Trend", value="🔺 UP" if trend == 1 else "🔻 DOWN")
+                    col1.metric("💰 Predicted Price", f"₹{price:.2f}")
+                    col2.metric("📈 Predicted Trend", "🔺 UP" if trend == 1 else "🔻 DOWN")
 
             except Exception as e:
                 st.error(f"Error: {e}")
 
-with tab2:
-    st.subheader("🔍 Close Price (Last 60 Days)")
-    fig = plot_data(df.tail(60), col_map['Close'])  # Only show last 60 days
-    st.plotly_chart(fig, use_container_width=True)
+# ---------------------- Chart Tab ------------------------
+if selected == "📉 Chart":
+    def plot_data(df, close_col):
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df[close_col],
+            mode='lines+markers',
+            name='Close Price',
+            line=dict(color='blue')))
+
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df['MA_5'],
+            mode='lines', name='MA 5',
+            line=dict(color='green', dash='dash')))
+
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df['MA_20'],
+            mode='lines', name='MA 20',
+            line=dict(color='orange', dash='dot')))
+
+        fig.update_layout(
+            title='📉 Stock Close Price (Last 60 Days)',
+            xaxis_title='Date',
+            yaxis_title='Price (INR)',
+            margin=dict(l=20, r=20, t=30, b=20),
+            height=500,
+            template='plotly_white'
+        )
+
+        return fig
+
+    st.subheader("📊 Historical Chart")
+    st.plotly_chart(plot_data(df.tail(60), col_map['Close']), use_container_width=True)
+
+# ---------------------- Footer ------------------------
+st.markdown("""
+    <hr>
+    <center>
+        Made with ❤️ by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit
+    </center>
+""", unsafe_allow_html=True)
