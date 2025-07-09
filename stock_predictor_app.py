@@ -158,9 +158,26 @@ with tab1:
 
 with tab2:
     st.subheader("🔍 Close Price (Last 60 Days)")
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df.index[-60:], y=df[col_map['Close']].tail(60),
-        mode='lines+markers', line=dict(color='blue'), name="Close Price"))
-    fig.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+    fig = plot_data(df.tail(60), col_map['Close'])  # Only show last 60 days
     st.plotly_chart(fig, use_container_width=True)
+
+# ---------------------- Plot Function ----------------------
+def plot_data(df, close_col):
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=df.index, y=df[close_col],
+        mode='lines+markers',
+        name='Close Price',
+        line=dict(color='blue')))
+
+    fig.update_layout(
+        title='📉 Stock Close Price (Last 60 Days)',
+        xaxis_title='Date',
+        yaxis_title='Price (INR)',
+        margin=dict(l=20, r=20, t=30, b=20),
+        height=400,
+        template='plotly_white'
+    )
+
+    return fig
