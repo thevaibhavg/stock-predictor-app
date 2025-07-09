@@ -99,6 +99,27 @@ with st.expander("⚙️ Advanced Options"):
 if st.button("🚀 Predict"):
     with st.spinner("Training model and predicting..."):
         try:
+    # --- Predict Price and Trend ---
+    price = reg_model.predict(X_target_scaled)[0]
+    trend = clf_model.predict(X_target_scaled)[0]
+
+    # --- Predictive Confidence Score for Classification ---
+    trend_proba = clf_model.predict_proba(X_target_scaled)[0][1]  # Probability of UP (class 1)
+    confidence_pct = trend_proba * 100  # Convert to %
+
+    # --- Display Metrics ---
+    col1, col2 = st.columns(2)
+    col1.metric("💰 Predicted Price", f"₹{price:.2f}")
+    col2.metric("📈 Predicted Trend", "🔺 UP" if trend == 1 else "🔻 DOWN")
+
+    # --- Display Confidence Score ---
+    st.markdown("#### 🔍 Prediction Confidence")
+    st.progress(int(confidence_pct))
+    st.info(f"Confidence: {confidence_pct:.2f}% that the trend is {'UP' if trend == 1 else 'DOWN'}")
+
+except Exception as e:
+    st.error(f"Error: {e}")
+        try:
             target_dt = pd.to_datetime(target_date)
             df_train = df[df.index < target_dt]
             df_target = df[df.index == target_dt]
