@@ -186,7 +186,7 @@ st.plotly_chart(plot_data(df.tail(60)), use_container_width=True)
 st.markdown(""" 
 <hr> 
 <center> 
-    Made with ❤️ by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit 
+    Made with ❤️ by <a href="https://github.com/thevaibhavg" target="_blank">vaibhav</a> | Powered by Streamlit 
 </center>
 """, unsafe_allow_html=True)
 
