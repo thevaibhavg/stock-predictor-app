@@ -28,15 +28,37 @@ default_symbol = "HDFCBANK.NS"
 
 #---------------------- Feature Generator ------------------------
 
-def generate_features(df): df['MA_5'] = df['Close'].rolling(5).mean() df['MA_20'] = df['Close'].rolling(20).mean() df['Daily_Return'] = df['Close'].pct_change() delta = df['Close'].diff() gain = delta.where(delta > 0, 0).rolling(14).mean() loss = -delta.where(delta < 0, 0).rolling(14).mean() rs = gain / (loss + 1e-10) df['RSI_14'] = 100 - (100 / (1 + rs)) return df
+def generate_features(df): 
+    df['MA_5'] = df['Close'].rolling(5).mean() 
+    df['MA_20'] = df['Close'].rolling(20).mean()
+    df['Daily_Return'] = df['Close'].pct_change()
+    delta = df['Close'].diff()
+    gain = delta.where(delta > 0, 0).rolling(14).mean() 
+    loss = -delta.where(delta < 0, 0).rolling(14).mean()
+    rs = gain / (loss + 1e-10)
+    df['RSI_14'] = 100 - (100 / (1 + rs)) return df
 
 #---------------------- About Page ------------------------
 
-if selected == "ℹ️ About": st.markdown(""" ### ℹ️ About the App - Built with ❤️ using Streamlit, Plotly, and Machine Learning - Predicts future stock price and trend direction - Features include: - Interactive charts - Technical indicators - Professional UI """) st.stop()
+if selected == "ℹ️ About": 
+    st.markdown(""" ### ℹ️ About the App
+    - Built with ❤️ using Streamlit, Plotly, and Machine Learning 
+    - Predicts future stock price and trend direction
+    - Features include:
+    - Interactive charts
+    - Technical indicators
+    - Professional UI
+    """)
+    st.stop()
 
 #---------------------- Prediction Section ------------------------
 
-if selected == "📊 Predict": col1, col2 = st.columns([3, 1]) with col1: user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol) with col2: st.write("")
+if selected == "📊 Predict":
+    col1, col2 = st.columns([3, 1]) 
+    with col1:
+        user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol) 
+    with col2:
+        st.write("")
 
 df = yf.download(user_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
 
@@ -156,5 +178,10 @@ st.plotly_chart(plot_data(df.tail(60)), use_container_width=True)
 
 #---------------------- Footer ------------------------
 
-st.markdown(""" <hr> <center> Made with ❤️ by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit </center> """, unsafe_allow_html=True)
+st.markdown(""" 
+<hr> 
+<center> 
+    Made with ❤️ by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit 
+</center>
+""", unsafe_allow_html=True)
 
