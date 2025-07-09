@@ -7,8 +7,6 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
-from streamlit_lottie import st_lottie
-import requests
 
 # ---------------------- Page Setup ------------------------
 st.set_page_config(page_title="Stock Predictor", layout="wide")
@@ -36,15 +34,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------------- Load Lottie Animation ------------------------
-def load_lottieurl(url):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_chart = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_c9fmlg.json")
-
 # ---------------------- Sidebar Navigation ------------------------
 with st.sidebar:
     selected = option_menu(
@@ -65,7 +54,6 @@ st.markdown("""
 
 # ---------------------- About Page ------------------------
 if selected == "ℹ️ About":
-    st_lottie(lottie_chart, height=250, key="about-lottie")
     st.markdown("""
     ### ℹ️ About the App
     - Built with ❤️ using **Streamlit**, **Plotly**, and **Machine Learning**
@@ -83,7 +71,7 @@ if selected == "📊 Predict":
     with col1:
         symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
     with col2:
-        st_lottie(lottie_chart, height=100, key="predict-lottie")
+        st.markdown("")
 
     df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
