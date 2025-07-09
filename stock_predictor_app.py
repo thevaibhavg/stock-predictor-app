@@ -101,7 +101,7 @@ if selected == "ℹ️ About":
 if selected == "📊 Predict":
     col1, col2 = st.columns([3, 1])
     with col1:
-        symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=symbol)
+        user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=symbol)
     with col2:
         st.write("")
 
