@@ -1,3 +1,12 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import date
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+import plotly.graph_objects as go
+from streamlit_option_menu import option_menu
 #---------------------- FINAL stock_predictor_app.py ----------------------
 
 import streamlit as st import yfinance as yf import pandas as pd import numpy as np from datetime import date from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier from sklearn.preprocessing import StandardScaler import plotly.graph_objects as go from streamlit_option_menu import option_menu
