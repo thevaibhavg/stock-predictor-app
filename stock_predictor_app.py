@@ -34,8 +34,11 @@ symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFC
 # Step 1: Download Data
 df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
-# Clean column names
-df.columns = df.columns.str.strip()
+# Fix MultiIndex error
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns = ['_'.join(col).strip() for col in df.columns.values]
+else:
+    df.columns = df.columns.str.strip()
 
 # Define required columns
 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
