@@ -20,7 +20,7 @@ st.markdown(""" <style> .title { font-size: 36px; font-weight: bold; color: #0E7
 
 #---------------------- Sidebar Navigation ------------------------
 
-with st.sidebar: selected = option_menu( "📋 Main Menu", ["📊 Predict", "📉 Chart", "ℹ️ About"], icons=["bar-chart-line", "graph-up", "info-circle"], default_index=0 )
+with st.sidebar: selected = option_menu( "📋 Main Menu", ["📊 Predict", "ℹ️ About"], icons=["bar-chart-line", "graph-up", "info-circle"], default_index=0 )
 
 #---------------------- Default Symbol ------------------------
 
