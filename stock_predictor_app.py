@@ -33,16 +33,16 @@ symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFC
 
 # Step 1: Download Data
 df = yf.download(symbol, period="1y", interval="1d", progress=False)
-
 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
 
+# Step 2: Validate Columns
 if df is None or df.empty:
     st.error("❌ No data returned. Please check the stock symbol or try again later.")
     st.stop()
 
-# Step 2: Validate Columns
 if not all(col in df.columns for col in required_cols):
-    st.error("❌ Downloaded data is missing required columns. Please try a different stock.")
+    st.error("❌ One or more required columns are missing. Symbol may be invalid or data is incomplete.")
+    st.write("Returned columns:", list(df.columns))
     st.stop()
 
 # Step 3: Clean & Feature Engineer
@@ -68,7 +68,6 @@ if st.button("Predict"):
             features = ['Open', 'High', 'Low', 'Close', 'Volume',
                         'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
             
-            # Validation
             missing_cols = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
 
             if df_target.empty or len(df_target) == 0:
