@@ -35,27 +35,31 @@ symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFC
 df = yf.download(symbol, period="1y", interval="1d", progress=False)
 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
 
-# Step 2: Validate Columns
+# Step 2: Validate DataFrame
 if df is None or df.empty:
     st.error("❌ No data returned. Please check the stock symbol or try again later.")
     st.stop()
 
-if not all(col in df.columns for col in required_cols):
-    st.error("❌ One or more required columns are missing. Symbol may be invalid or data is incomplete.")
+# Step 3: Validate Required Columns Exist
+missing_required_cols = [col for col in required_cols if col not in df.columns]
+
+if missing_required_cols:
+    st.error(f"❌ Required columns missing from data: {missing_required_cols}")
     st.write("Returned columns:", list(df.columns))
     st.stop()
+else:
+    df = df.dropna(subset=required_cols)
 
-# Step 3: Clean & Feature Engineer
-df = df.dropna(subset=required_cols)
+# Step 4: Feature Engineering
 df = generate_features(df)
 df = df.dropna()
 
-# Step 4: Set Date Picker
+# Step 5: Set Date Picker
 min_date = df.index.min().date()
 max_date = df.index.max().date()
 target_date = st.date_input("📅 Select the target date to predict", value=max_date, min_value=min_date, max_value=max_date)
 
-# Step 5: On Predict Button Click
+# Step 6: On Predict Button Click
 if st.button("Predict"):
     with st.spinner("🔄 Processing..."):
         try:
@@ -68,12 +72,13 @@ if st.button("Predict"):
             features = ['Open', 'High', 'Low', 'Close', 'Volume',
                         'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
             
-            missing_cols = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
+            # Validation
+            missing_cols_target = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
 
             if df_target.empty or len(df_target) == 0:
                 st.error("❌ No market data available for the selected date (weekend or holiday).")
-            elif missing_cols:
-                st.error(f"❌ Selected date is missing data: {missing_cols}")
+            elif missing_cols_target:
+                st.error(f"❌ Selected date is missing data: {missing_cols_target}")
             elif len(df_train) < 30:
                 st.error("❌ Not enough historical data to train the model.")
             elif df_train.isnull().values.any() or df_target.isnull().values.any():
