@@ -64,5 +64,4 @@ if st.button("Predict"):
         st.success(f"Trend: {'🔺 UP' if trend == 1 else '🔻 DOWN'}")
         
         st.line_chart(df['Close'][-60:])
-Fix broken Python file
 
