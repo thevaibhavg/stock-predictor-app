@@ -39,12 +39,11 @@ with st.sidebar:
 # ---------------------- Global Defaults ------------------------
 default_symbol = "HDFCBANK.NS"
 
-def generate_features(df, col_map):
-    close = col_map['Close']
-    df['MA_5'] = df[close].rolling(5).mean()
-    df['MA_20'] = df[close].rolling(20).mean()
-    df['Daily_Return'] = df[close].pct_change()
-    delta = df[close].diff()
+def generate_features(df):
+    df['MA_5'] = df['Close'].rolling(5).mean()
+    df['MA_20'] = df['Close'].rolling(20).mean()
+    df['Daily_Return'] = df['Close'].pct_change()
+    delta = df['Close'].diff()
     gain = delta.where(delta > 0, 0).rolling(14).mean()
     loss = -delta.where(delta < 0, 0).rolling(14).mean()
     rs = gain / (loss + 1e-10)
@@ -79,25 +78,18 @@ if selected == "📊 Predict":
         st.error(f"No data found for {user_symbol}.")
         st.stop()
 
-    # Flatten columns if needed
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = ['_'.join(col).strip() for col in df.columns.values]
-    else:
-        df.columns = df.columns.str.strip()
+    # Clean column names
+    df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
 
-    # Map OHLCV columns
-    col_map = {}
-    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
-        match = [col for col in df.columns if col.lower().startswith(base.lower())]
-        col_map[base] = match[0] if match else None
-
-    if not all(col_map.values()):
-        st.error("Some required OHLCV columns are missing.")
-        st.write("Columns:", list(df.columns))
+    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        st.error(f"Missing required columns: {missing}")
+        st.write("Available columns:", df.columns.tolist())
         st.stop()
 
-    df = df.dropna(subset=col_map.values())
-    df = generate_features(df, col_map).dropna()
+    df = df.dropna(subset=required_cols)
+    df = generate_features(df).dropna()
 
     min_date = df.index.min().date()
     max_date = df.index.max().date()
@@ -119,7 +111,7 @@ if selected == "📊 Predict":
                 df_train = df[df.index < target_dt]
                 df_target = df[df.index == target_dt]
 
-                features = list(col_map.values()) + ['MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
+                features = required_cols + ['MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
 
                 if df_target.empty:
                     st.error("No trading data for selected date.")
@@ -128,11 +120,11 @@ if selected == "📊 Predict":
                 else:
                     df_train = df_train.copy()
                     df_train['Trend'] = np.where(
-                        df_train[col_map['Close']].shift(-1) > df_train[col_map['Close']], 1, 0
+                        df_train['Close'].shift(-1) > df_train['Close'], 1, 0
                     )
 
                     X = df_train[features].iloc[:-1]
-                    y_reg = df_train[col_map['Close']].shift(-1).dropna()
+                    y_reg = df_train['Close'].shift(-1).dropna()
                     y_clf = df_train['Trend'].iloc[:-1]
 
                     scaler = StandardScaler()
@@ -161,27 +153,21 @@ if selected == "📊 Predict":
 if selected == "📉 Chart":
     df = yf.download(default_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
 
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = ['_'.join(col).strip() for col in df.columns.values]
-    else:
-        df.columns = df.columns.str.strip()
-
-    col_map = {}
-    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
-        match = [col for col in df.columns if col.lower().startswith(base.lower())]
-        col_map[base] = match[0] if match else None
-
-    if not all(col_map.values()):
-        st.warning("Some required columns missing.")
+    df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
+    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        st.error(f"Missing required columns: {missing}")
+        st.write("Available columns:", df.columns.tolist())
         st.stop()
 
-    df = df.dropna(subset=col_map.values())
-    df = generate_features(df, col_map).dropna()
+    df = df.dropna(subset=required_cols)
+    df = generate_features(df).dropna()
 
-    def plot_data(df, close_col):
+    def plot_data(df):
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[close_col],
+            x=df.index, y=df['Close'],
             mode='lines+markers',
             name='Close Price',
             line=dict(color='blue')))
@@ -208,7 +194,7 @@ if selected == "📉 Chart":
         return fig
 
     st.subheader("📊 Historical Chart")
-    st.plotly_chart(plot_data(df.tail(60), col_map['Close']), use_container_width=True)
+    st.plotly_chart(plot_data(df.tail(60)), use_container_width=True)
 
 # ---------------------- Footer ------------------------
 st.markdown("""
