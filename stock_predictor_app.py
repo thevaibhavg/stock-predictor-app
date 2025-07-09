@@ -30,45 +30,51 @@ st.set_page_config(page_title="📈 Stock Predictor", layout="centered")
 st.title("📈 Stock Price & Trend Predictor")
 
 symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
-target_date = st.date_input("📅 Select the target date to predict", value=date.today())
 
-if st.button("Predict"):
-    with st.spinner("🔄 Fetching data and preparing input..."):
-        try:
-            # Step 1: Download and clean data
-            df = yf.download(symbol, period="1y", interval="1d", progress=False)
+# Download data
+df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
-            if df is None or df.empty:
-                st.error("❌ Invalid symbol or no data found.")
-            else:
-                df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
-                df = generate_features(df)
-                df = df.dropna()
+if df is not None and not df.empty:
+    df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
+    df = generate_features(df)
+    df = df.dropna()
 
-                # Step 2: Date processing
+    # Set date limits for the picker
+    min_date = df.index.min().date()
+    max_date = df.index.max().date()
+
+    target_date = st.date_input("📅 Select the target date to predict", value=max_date, min_value=min_date, max_value=max_date)
+
+    if st.button("Predict"):
+        with st.spinner("🔄 Fetching data and preparing input..."):
+            try:
                 target_date_str = target_date.strftime('%Y-%m-%d')
                 target_dt = pd.to_datetime(target_date_str)
 
-                # Step 3: Filter data
                 df_train = df[df.index < target_dt]
                 df_target = df[df.index == target_dt]
 
                 features = ['Open', 'High', 'Low', 'Close', 'Volume',
                             'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
+                
+                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                missing_cols = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
 
-                # Step 4: Validation
-                if df_target.empty:
-                    st.error("❌ No market data available for the selected date.")
+                # VALIDATION
+                if df_target.empty or len(df_target) == 0:
+                    st.error("❌ No market data available for the selected date (likely a weekend or holiday).")
+                elif missing_cols:
+                    st.error(f"❌ Selected date is missing required data: {missing_cols}")
                 elif len(df_train) < 30:
-                    st.error("❌ Not enough data to train the model. Try a later date.")
+                    st.error("❌ Not enough historical data to train the model.")
                 elif df_train.isnull().values.any() or df_target.isnull().values.any():
-                    st.error("❌ Missing values found.")
+                    st.error("❌ Missing values found in the data.")
                 elif df_train[features].nunique().min() <= 1:
                     st.error("❌ Not enough variation in training data.")
                 else:
                     st.success(f"✅ Data validated. Training on {len(df_train)} records...")
 
-                    # Step 5: Train models
+                    # Training
                     df_train = df_train.copy()
                     df_train['Trend'] = np.where(df_train['Close'].shift(-1) > df_train['Close'], 1, 0)
 
@@ -85,21 +91,23 @@ if st.button("Predict"):
                     reg_model.fit(X_scaled, y_reg)
                     clf_model.fit(X_scaled, y_clf)
 
-                    # Step 6: Predict
+                    # Prediction
                     X_target = df_target[features]
                     X_target_scaled = scaler.transform(X_target)
 
                     predicted_price = reg_model.predict(X_target_scaled)[0]
                     predicted_trend = clf_model.predict(X_target_scaled)[0]
 
-                    # Step 7: Display result
+                    # Display Output
                     st.subheader(f"📊 Prediction for {target_date_str}")
                     st.success(f"💰 Predicted Price: ₹{predicted_price:.2f}")
                     st.info(f"📈 Predicted Trend: {'🔺 UP' if predicted_trend == 1 else '🔻 DOWN'}")
 
-                    # Step 8: Show chart
                     st.subheader("📉 Close Price - Last 60 Days")
                     st.line_chart(df['Close'].tail(60))
 
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+            except Exception as e:
+                st.error(f"❌ Error occurred: {str(e)}")
+
+else:
+    st.warning("⚠️ No data available for this stock symbol.")
