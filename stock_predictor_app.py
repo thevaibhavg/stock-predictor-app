@@ -14,15 +14,8 @@ st.set_page_config(page_title="Stock Predictor", layout="wide")
 # ---------------------- CSS Styling ------------------------
 st.markdown("""
     <style>
-        .title {
-            font-size: 36px;
-            font-weight: bold;
-            color: #0E76A8;
-        }
-        .subtitle {
-            font-size: 18px;
-            color: #444;
-        }
+        .title { font-size: 36px; font-weight: bold; color: #0E76A8; }
+        .subtitle { font-size: 18px; color: #444; }
         .stButton>button {
             background-color: #0E76A8;
             color: white;
@@ -42,6 +35,45 @@ with st.sidebar:
         icons=["bar-chart-line", "graph-up", "info-circle"],
         default_index=0
     )
+
+# ---------------------- Global Stock Data Setup ------------------------
+symbol = "HDFCBANK.NS"
+df = yf.download(symbol, period="1y", interval="1d", progress=False)
+
+if df.empty:
+    st.error("No data found.")
+    st.stop()
+
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns = ['_'.join(col).strip() for col in df.columns.values]
+else:
+    df.columns = df.columns.str.strip()
+
+col_map = {}
+for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
+    match = [col for col in df.columns if col.lower().startswith(base.lower())]
+    col_map[base] = match[0] if match else None
+
+if not all(col_map.values()):
+    st.error("Some required OHLCV columns are missing.")
+    st.write("Columns:", list(df.columns))
+    st.stop()
+
+df = df.dropna(subset=col_map.values())
+
+def generate_features(df):
+    close = col_map['Close']
+    df['MA_5'] = df[close].rolling(5).mean()
+    df['MA_20'] = df[close].rolling(20).mean()
+    df['Daily_Return'] = df[close].pct_change()
+    delta = df[close].diff()
+    gain = delta.where(delta > 0, 0).rolling(14).mean()
+    loss = -delta.where(delta < 0, 0).rolling(14).mean()
+    rs = gain / (loss + 1e-10)
+    df['RSI_14'] = 100 - (100 / (1 + rs))
+    return df
+
+df = generate_features(df).dropna()
 
 # ---------------------- Hero Header ------------------------
 st.markdown("""
@@ -69,46 +101,9 @@ if selected == "ℹ️ About":
 if selected == "📊 Predict":
     col1, col2 = st.columns([3, 1])
     with col1:
-        symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
+        symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=symbol)
     with col2:
-        st.markdown("")
-
-    df = yf.download(symbol, period="1y", interval="1d", progress=False)
-
-    if df.empty:
-        st.error("No data found. Please check the symbol.")
-        st.stop()
-
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = ['_'.join(col).strip() for col in df.columns.values]
-    else:
-        df.columns = df.columns.str.strip()
-
-    col_map = {}
-    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
-        match = [col for col in df.columns if col.lower().startswith(base.lower())]
-        col_map[base] = match[0] if match else None
-
-    if not all(col_map.values()):
-        st.error("Some required columns missing.")
-        st.write("Returned columns:", list(df.columns))
-        st.stop()
-
-    df = df.dropna(subset=col_map.values())
-
-    def generate_features(df):
-        close = col_map['Close']
-        df['MA_5'] = df[close].rolling(5).mean()
-        df['MA_20'] = df[close].rolling(20).mean()
-        df['Daily_Return'] = df[close].pct_change()
-        delta = df[close].diff()
-        gain = delta.where(delta > 0, 0).rolling(14).mean()
-        loss = -delta.where(delta < 0, 0).rolling(14).mean()
-        rs = gain / (loss + 1e-10)
-        df['RSI_14'] = 100 - (100 / (1 + rs))
-        return df
-
-    df = generate_features(df).dropna()
+        st.write("")
 
     min_date = df.index.min().date()
     max_date = df.index.max().date()
@@ -138,7 +133,9 @@ if selected == "📊 Predict":
                     st.error("Insufficient data to train.")
                 else:
                     df_train = df_train.copy()
-                    df_train['Trend'] = np.where(df_train[col_map['Close']].shift(-1) > df_train[col_map['Close']], 1, 0)
+                    df_train['Trend'] = np.where(
+                        df_train[col_map['Close']].shift(-1) > df_train[col_map['Close']], 1, 0
+                    )
 
                     X = df_train[features].iloc[:-1]
                     y_reg = df_train[col_map['Close']].shift(-1).dropna()
@@ -170,7 +167,6 @@ if selected == "📊 Predict":
 if selected == "📉 Chart":
     def plot_data(df, close_col):
         fig = go.Figure()
-
         fig.add_trace(go.Scatter(
             x=df.index, y=df[close_col],
             mode='lines+markers',
