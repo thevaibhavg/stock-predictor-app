@@ -67,7 +67,11 @@ if df.empty:
     st.error(f"No data found for {user_symbol}.")
     st.stop()
 
-df.columns = [str(col).split("_")[0].strip() if "_" in str(col) else str(col).strip() for col in df.columns]
+# Flatten MultiIndex columns if present
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns = [col[0] for col in df.columns]
+else:
+    df.columns = df.columns.astype(str)
 
 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
 missing = [col for col in required_cols if col not in df.columns]
