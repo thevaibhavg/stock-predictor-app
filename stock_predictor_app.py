@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import plotly.graph_objects as go 
 from streamlit_option_menu import option_menu
 
-st.set_page_config(page_title="Stock Predictor", layout="wide")
+st.set_page_config(page_title=" Predictor", layout="wide")
 
 #---------------------- Styling ----------------------
 
@@ -73,7 +73,7 @@ df = generate_features(df).dropna()
 
 st.markdown("""
 <div style="background-color:#0E76A8;padding:20px;border-radius:10px"> 
-<h1 style="color:white;text-align:center;">📈 Stock Predictor App</h1>
+<h1 style="color:white;text-align:center;">📈 Predictor App</h1>
 <p style="color:white;text-align:center;">Smart machine learning predictions with interactive charts</p>
 </div> 
 <br> 
