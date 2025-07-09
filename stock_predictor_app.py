@@ -47,6 +47,13 @@ def train_models(data):
 
 # --- UI ---
 symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
+from datetime import date
+
+target_date = st.date_input(
+    "📅 Select the target date to predict (from last 180 days)", 
+    value=date.today()
+)
+
 
 if st.button("Predict"):
     with st.spinner("🔄 Fetching data and predicting..."):
