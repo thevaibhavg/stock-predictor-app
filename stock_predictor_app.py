@@ -40,15 +40,15 @@ if df is None or df.empty:
     st.error("❌ No data returned. Please check the stock symbol or try again later.")
     st.stop()
 
-# Step 3: Validate Required Columns Exist
-missing_required_cols = [col for col in required_cols if col not in df.columns]
+# Step 3: Drop rows using only available columns
+existing_cols = [col for col in required_cols if col in df.columns]
 
-if missing_required_cols:
-    st.error(f"❌ Required columns missing from data: {missing_required_cols}")
+if not existing_cols:
+    st.error("❌ None of the required OHLCV columns exist in the dataset.")
     st.write("Returned columns:", list(df.columns))
     st.stop()
-else:
-    df = df.dropna(subset=required_cols)
+
+df = df.dropna(subset=existing_cols)
 
 # Step 4: Feature Engineering
 df = generate_features(df)
@@ -73,7 +73,7 @@ if st.button("Predict"):
                         'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
             
             # Validation
-            missing_cols_target = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
+            missing_cols_target = [col for col in features if col not in df_target.columns or df_target[col].isnull().any()]
 
             if df_target.empty or len(df_target) == 0:
                 st.error("❌ No market data available for the selected date (weekend or holiday).")
