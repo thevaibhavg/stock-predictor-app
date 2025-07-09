@@ -20,13 +20,12 @@ if isinstance(df.columns, pd.MultiIndex):
 else:
     df.columns = df.columns.str.strip()
 
-# Automatically map columns
+# # Correct dynamic mapping
 col_map = {}
-for col in df.columns:
-    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
-        if col.endswith(base):
-            col_map[base] = col
-
+for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
+    match = [col for col in df.columns if col.lower().startswith(base.lower())]
+    col_map[base] = match[0] if match else None
+    
 required = ['Open', 'High', 'Low', 'Close', 'Volume']
 if not all(k in col_map for k in required):
     st.error("❌ Required columns not found. Check the symbol or try later.")
