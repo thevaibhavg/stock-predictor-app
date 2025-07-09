@@ -1,15 +1,14 @@
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from datetime import date
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-import plotly.graph_objects as go
-from streamlit_option_menu import option_menu
 #---------------------- FINAL stock_predictor_app.py ----------------------
 
-import streamlit as st import yfinance as yf import pandas as pd import numpy as np from datetime import date from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier from sklearn.preprocessing import StandardScaler import plotly.graph_objects as go from streamlit_option_menu import option_menu
+import streamlit as st 
+import yfinance as yf
+import pandas as pd 
+import numpy as np
+from datetime import date
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier 
+from sklearn.preprocessing import StandardScaler 
+import plotly.graph_objects as go 
+from streamlit_option_menu import option_menu
 
 #---------------------- Page Setup ------------------------
 
@@ -21,7 +20,7 @@ st.markdown(""" <style> .title { font-size: 36px; font-weight: bold; color: #0E7
 
 #---------------------- Sidebar Navigation ------------------------
 
-with st.sidebar: selected = option_menu( "\ud83d\udcdc Main Menu", ["\ud83d\udcca Predict", "\ud83d\udcc9 Chart", "\u2139\ufe0f About"], icons=["bar-chart-line", "graph-up", "info-circle"], default_index=0 )
+with st.sidebar: selected = option_menu( "📋 Main Menu", ["📊 Predict", "📉 Chart", "ℹ️ About"], icons=["bar-chart-line", "graph-up", "info-circle"], default_index=0 )
 
 #---------------------- Default Symbol ------------------------
 
@@ -33,11 +32,11 @@ def generate_features(df): df['MA_5'] = df['Close'].rolling(5).mean() df['MA_20'
 
 #---------------------- About Page ------------------------
 
-if selected == "\u2139\ufe0f About": st.markdown(""" ### \u2139\ufe0f About the App - Built with \u2764\ufe0f using Streamlit, Plotly, and Machine Learning - Predicts future stock price and trend direction - Features include: - Interactive charts - Technical indicators - Professional UI """) st.stop()
+if selected == "ℹ️ About": st.markdown(""" ### ℹ️ About the App - Built with ❤️ using Streamlit, Plotly, and Machine Learning - Predicts future stock price and trend direction - Features include: - Interactive charts - Technical indicators - Professional UI """) st.stop()
 
 #---------------------- Prediction Section ------------------------
 
-if selected == "\ud83d\udcca Predict": col1, col2 = st.columns([3, 1]) with col1: user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol) with col2: st.write("")
+if selected == "📊 Predict": col1, col2 = st.columns([3, 1]) with col1: user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol) with col2: st.write("")
 
 df = yf.download(user_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
 
@@ -62,15 +61,15 @@ max_date = df.index.max().date()
 
 col1, col2 = st.columns(2)
 with col1:
-    target_date = st.date_input("\ud83d\uddd3\ufe0f Select prediction date", value=max_date, min_value=min_date, max_value=max_date)
+    target_date = st.date_input("📅 Select prediction date", value=max_date, min_value=min_date, max_value=max_date)
 with col2:
     st.write("")
 
-with st.expander("\u2699\ufe0f Advanced Options"):
+with st.expander("⚙️ Advanced Options"):
     use_scaler = st.checkbox("Use Standard Scaler", value=True)
     n_estimators = st.slider("Number of Trees", 50, 300, 100, step=50)
 
-if st.button("\ud83d\ude80 Predict"):
+if st.button("🚀 Predict"):
     with st.spinner("Training model and predicting..."):
         try:
             target_dt = pd.to_datetime(target_date)
@@ -109,15 +108,15 @@ if st.button("\ud83d\ude80 Predict"):
                 trend = clf_model.predict(X_target_scaled)[0]
 
                 col1, col2 = st.columns(2)
-                col1.metric("\ud83d\udcb0 Predicted Price", f"\u20b9{price:.2f}")
-                col2.metric("\ud83d\udcc8 Predicted Trend", "\ud83d\udd3a UP" if trend == 1 else "\ud83d\udd3b DOWN")
+                col1.metric("💰 Predicted Price", f"₹{price:.2f}")
+                col2.metric("📈 Predicted Trend", "🔺 UP" if trend == 1 else "🔻 DOWN")
 
         except Exception as e:
             st.error(f"Error: {e}")
 
----------------------- Chart Section ------------------------
+#---------------------- Chart Section ------------------------
 
-if selected == "\ud83d\udcc9 Chart": df = yf.download(default_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
+if selected == "📉 Chart": df = yf.download(default_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
 
 df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
 df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
@@ -142,7 +141,7 @@ def plot_data(df):
         line=dict(color='orange', dash='dot')))
 
     fig.update_layout(
-        title='\ud83d\udcc9 Stock Close Price (Last 60 Days)',
+        title='📉 Stock Close Price (Last 60 Days)',
         xaxis_title='Date',
         yaxis_title='Price (INR)',
         margin=dict(l=20, r=20, t=30, b=20),
@@ -152,10 +151,10 @@ def plot_data(df):
 
     return fig
 
-st.subheader("\ud83d\udcca Historical Chart")
+st.subheader("📊 Historical Chart")
 st.plotly_chart(plot_data(df.tail(60)), use_container_width=True)
 
----------------------- Footer ------------------------
+#---------------------- Footer ------------------------
 
-st.markdown(""" <hr> <center> Made with \u2764\ufe0f by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit </center> """, unsafe_allow_html=True)
+st.markdown(""" <hr> <center> Made with ❤️ by <a href="https://github.com/yourusername" target="_blank">Your Name</a> | Powered by Streamlit </center> """, unsafe_allow_html=True)
 
