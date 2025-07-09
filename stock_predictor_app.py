@@ -31,83 +31,91 @@ st.title("📈 Stock Price & Trend Predictor")
 
 symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
 
-# Download data
+# Step 1: Download Data
 df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
-if df is not None and not df.empty:
-    df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
-    df = generate_features(df)
-    df = df.dropna()
+required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
 
-    # Set date limits for the picker
-    min_date = df.index.min().date()
-    max_date = df.index.max().date()
+if df is None or df.empty:
+    st.error("❌ No data returned. Please check the stock symbol or try again later.")
+    st.stop()
 
-    target_date = st.date_input("📅 Select the target date to predict", value=max_date, min_value=min_date, max_value=max_date)
+# Step 2: Validate Columns
+if not all(col in df.columns for col in required_cols):
+    st.error("❌ Downloaded data is missing required columns. Please try a different stock.")
+    st.stop()
 
-    if st.button("Predict"):
-        with st.spinner("🔄 Fetching data and preparing input..."):
-            try:
-                target_date_str = target_date.strftime('%Y-%m-%d')
-                target_dt = pd.to_datetime(target_date_str)
+# Step 3: Clean & Feature Engineer
+df = df.dropna(subset=required_cols)
+df = generate_features(df)
+df = df.dropna()
 
-                df_train = df[df.index < target_dt]
-                df_target = df[df.index == target_dt]
+# Step 4: Set Date Picker
+min_date = df.index.min().date()
+max_date = df.index.max().date()
+target_date = st.date_input("📅 Select the target date to predict", value=max_date, min_value=min_date, max_value=max_date)
 
-                features = ['Open', 'High', 'Low', 'Close', 'Volume',
-                            'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
-                
-                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-                missing_cols = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
+# Step 5: On Predict Button Click
+if st.button("Predict"):
+    with st.spinner("🔄 Processing..."):
+        try:
+            target_date_str = target_date.strftime('%Y-%m-%d')
+            target_dt = pd.to_datetime(target_date_str)
 
-                # VALIDATION
-                if df_target.empty or len(df_target) == 0:
-                    st.error("❌ No market data available for the selected date (likely a weekend or holiday).")
-                elif missing_cols:
-                    st.error(f"❌ Selected date is missing required data: {missing_cols}")
-                elif len(df_train) < 30:
-                    st.error("❌ Not enough historical data to train the model.")
-                elif df_train.isnull().values.any() or df_target.isnull().values.any():
-                    st.error("❌ Missing values found in the data.")
-                elif df_train[features].nunique().min() <= 1:
-                    st.error("❌ Not enough variation in training data.")
-                else:
-                    st.success(f"✅ Data validated. Training on {len(df_train)} records...")
+            df_train = df[df.index < target_dt]
+            df_target = df[df.index == target_dt]
 
-                    # Training
-                    df_train = df_train.copy()
-                    df_train['Trend'] = np.where(df_train['Close'].shift(-1) > df_train['Close'], 1, 0)
+            features = ['Open', 'High', 'Low', 'Close', 'Volume',
+                        'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
+            
+            # Validation
+            missing_cols = [col for col in required_cols if col not in df_target.columns or df_target[col].isnull().any()]
 
-                    X = df_train[features].iloc[:-1]
-                    y_reg = df_train['Close'].shift(-1).dropna()
-                    y_clf = df_train['Trend'].iloc[:-1]
+            if df_target.empty or len(df_target) == 0:
+                st.error("❌ No market data available for the selected date (weekend or holiday).")
+            elif missing_cols:
+                st.error(f"❌ Selected date is missing data: {missing_cols}")
+            elif len(df_train) < 30:
+                st.error("❌ Not enough historical data to train the model.")
+            elif df_train.isnull().values.any() or df_target.isnull().values.any():
+                st.error("❌ Missing values found in the data.")
+            elif df_train[features].nunique().min() <= 1:
+                st.error("❌ Not enough variation in training data.")
+            else:
+                st.success(f"✅ Data validated. Training on {len(df_train)} records...")
 
-                    scaler = StandardScaler()
-                    X_scaled = scaler.fit_transform(X)
+                # Training
+                df_train = df_train.copy()
+                df_train['Trend'] = np.where(df_train['Close'].shift(-1) > df_train['Close'], 1, 0)
 
-                    reg_model = RandomForestRegressor(n_estimators=100, random_state=42)
-                    clf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+                X = df_train[features].iloc[:-1]
+                y_reg = df_train['Close'].shift(-1).dropna()
+                y_clf = df_train['Trend'].iloc[:-1]
 
-                    reg_model.fit(X_scaled, y_reg)
-                    clf_model.fit(X_scaled, y_clf)
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X)
 
-                    # Prediction
-                    X_target = df_target[features]
-                    X_target_scaled = scaler.transform(X_target)
+                reg_model = RandomForestRegressor(n_estimators=100, random_state=42)
+                clf_model = RandomForestClassifier(n_estimators=100, random_state=42)
 
-                    predicted_price = reg_model.predict(X_target_scaled)[0]
-                    predicted_trend = clf_model.predict(X_target_scaled)[0]
+                reg_model.fit(X_scaled, y_reg)
+                clf_model.fit(X_scaled, y_clf)
 
-                    # Display Output
-                    st.subheader(f"📊 Prediction for {target_date_str}")
-                    st.success(f"💰 Predicted Price: ₹{predicted_price:.2f}")
-                    st.info(f"📈 Predicted Trend: {'🔺 UP' if predicted_trend == 1 else '🔻 DOWN'}")
+                # Prediction
+                X_target = df_target[features]
+                X_target_scaled = scaler.transform(X_target)
 
-                    st.subheader("📉 Close Price - Last 60 Days")
-                    st.line_chart(df['Close'].tail(60))
+                predicted_price = reg_model.predict(X_target_scaled)[0]
+                predicted_trend = clf_model.predict(X_target_scaled)[0]
 
-            except Exception as e:
-                st.error(f"❌ Error occurred: {str(e)}")
+                # Display Results
+                st.subheader(f"📊 Prediction for {target_date_str}")
+                st.success(f"💰 Predicted Price: ₹{predicted_price:.2f}")
+                st.info(f"📈 Predicted Trend: {'🔺 UP' if predicted_trend == 1 else '🔻 DOWN'}")
 
-else:
-    st.warning("⚠️ No data available for this stock symbol.")
+                # Chart
+                st.subheader("📉 Close Price - Last 60 Days")
+                st.line_chart(df['Close'].tail(60))
+
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {str(e)}")
