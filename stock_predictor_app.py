@@ -14,8 +14,15 @@ st.set_page_config(page_title="Stock Predictor", layout="wide")
 # ---------------------- CSS Styling ------------------------
 st.markdown("""
     <style>
-        .title { font-size: 36px; font-weight: bold; color: #0E76A8; }
-        .subtitle { font-size: 18px; color: #444; }
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #0E76A8;
+        }
+        .subtitle {
+            font-size: 18px;
+            color: #444;
+        }
         .stButton>button {
             background-color: #0E76A8;
             color: white;
@@ -36,19 +43,14 @@ with st.sidebar:
         default_index=0
     )
 
-# ---------------------- Global Defaults ------------------------
-default_symbol = "HDFCBANK.NS"
-
-def generate_features(df):
-    df['MA_5'] = df['Close'].rolling(5).mean()
-    df['MA_20'] = df['Close'].rolling(20).mean()
-    df['Daily_Return'] = df['Close'].pct_change()
-    delta = df['Close'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / (loss + 1e-10)
-    df['RSI_14'] = 100 - (100 / (1 + rs))
-    return df
+# ---------------------- Hero Header ------------------------
+st.markdown("""
+    <div style="background-color:#0E76A8;padding:20px;border-radius:10px">
+        <h1 style="color:white;text-align:center;">📈 Stock Predictor App</h1>
+        <p style="color:white;text-align:center;">Smart machine learning predictions with interactive charts</p>
+    </div>
+    <br>
+""", unsafe_allow_html=True)
 
 # ---------------------- About Page ------------------------
 if selected == "ℹ️ About":
@@ -67,28 +69,45 @@ if selected == "ℹ️ About":
 if selected == "📊 Predict":
     col1, col2 = st.columns([3, 1])
     with col1:
-        user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol)
+        symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
     with col2:
-        st.write("")
+        st.markdown("")
 
-    # Download data
-    df = yf.download(user_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
+    df = yf.download(symbol, period="1y", interval="1d", progress=False)
 
     if df.empty:
-        st.error(f"No data found for {user_symbol}.")
+        st.error("No data found. Please check the symbol.")
         st.stop()
 
-    # Clean column names
-    df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(col).strip() for col in df.columns.values]
+    else:
+        df.columns = df.columns.str.strip()
 
-    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    missing = [col for col in required_cols if col not in df.columns]
-    if missing:
-        st.error(f"Missing required columns: {missing}")
-        st.write("Available columns:", df.columns.tolist())
+    col_map = {}
+    for base in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        match = [col for col in df.columns if col.lower().startswith(base.lower())]
+        col_map[base] = match[0] if match else None
+
+    if not all(col_map.values()):
+        st.error("Some required columns missing.")
+        st.write("Returned columns:", list(df.columns))
         st.stop()
 
-    df = df.dropna(subset=required_cols)
+    df = df.dropna(subset=col_map.values())
+
+    def generate_features(df):
+        close = col_map['Close']
+        df['MA_5'] = df[close].rolling(5).mean()
+        df['MA_20'] = df[close].rolling(20).mean()
+        df['Daily_Return'] = df[close].pct_change()
+        delta = df[close].diff()
+        gain = delta.where(delta > 0, 0).rolling(14).mean()
+        loss = -delta.where(delta < 0, 0).rolling(14).mean()
+        rs = gain / (loss + 1e-10)
+        df['RSI_14'] = 100 - (100 / (1 + rs))
+        return df
+
     df = generate_features(df).dropna()
 
     min_date = df.index.min().date()
@@ -111,7 +130,7 @@ if selected == "📊 Predict":
                 df_train = df[df.index < target_dt]
                 df_target = df[df.index == target_dt]
 
-                features = required_cols + ['MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
+                features = list(col_map.values()) + ['MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
 
                 if df_target.empty:
                     st.error("No trading data for selected date.")
@@ -119,12 +138,10 @@ if selected == "📊 Predict":
                     st.error("Insufficient data to train.")
                 else:
                     df_train = df_train.copy()
-                    df_train['Trend'] = np.where(
-                        df_train['Close'].shift(-1) > df_train['Close'], 1, 0
-                    )
+                    df_train['Trend'] = np.where(df_train[col_map['Close']].shift(-1) > df_train[col_map['Close']], 1, 0)
 
                     X = df_train[features].iloc[:-1]
-                    y_reg = df_train['Close'].shift(-1).dropna()
+                    y_reg = df_train[col_map['Close']].shift(-1).dropna()
                     y_clf = df_train['Trend'].iloc[:-1]
 
                     scaler = StandardScaler()
@@ -151,23 +168,11 @@ if selected == "📊 Predict":
 
 # ---------------------- Chart Tab ------------------------
 if selected == "📉 Chart":
-    df = yf.download(default_symbol, period="1y", interval="1d", auto_adjust=False, progress=False)
-
-    df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
-    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    missing = [col for col in required_cols if col not in df.columns]
-    if missing:
-        st.error(f"Missing required columns: {missing}")
-        st.write("Available columns:", df.columns.tolist())
-        st.stop()
-
-    df = df.dropna(subset=required_cols)
-    df = generate_features(df).dropna()
-
-    def plot_data(df):
+    def plot_data(df, close_col):
         fig = go.Figure()
+
         fig.add_trace(go.Scatter(
-            x=df.index, y=df['Close'],
+            x=df.index, y=df[close_col],
             mode='lines+markers',
             name='Close Price',
             line=dict(color='blue')))
@@ -194,7 +199,7 @@ if selected == "📉 Chart":
         return fig
 
     st.subheader("📊 Historical Chart")
-    st.plotly_chart(plot_data(df.tail(60)), use_container_width=True)
+    st.plotly_chart(plot_data(df.tail(60), col_map['Close']), use_container_width=True)
 
 # ---------------------- Footer ------------------------
 st.markdown("""
