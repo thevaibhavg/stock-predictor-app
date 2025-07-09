@@ -31,7 +31,7 @@ st.markdown("""
 with st.sidebar: 
     selected = option_menu(
         "📋 Main Menu", 
-        ["📊 Predict", "📉 Chart", "ℹ️ About"], 
+        ["📉 Chart", "ℹ️ About"], 
         icons=["bar-chart-line", "graph-up", "info-circle"],
         default_index=0 
     )
