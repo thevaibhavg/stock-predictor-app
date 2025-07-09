@@ -1,32 +1,32 @@
----------------------- FINAL stock_predictor_app.py ----------------------
+#---------------------- FINAL stock_predictor_app.py ----------------------
 
 import streamlit as st import yfinance as yf import pandas as pd import numpy as np from datetime import date from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier from sklearn.preprocessing import StandardScaler import plotly.graph_objects as go from streamlit_option_menu import option_menu
 
----------------------- Page Setup ------------------------
+#---------------------- Page Setup ------------------------
 
 st.set_page_config(page_title="Stock Predictor", layout="wide")
 
----------------------- CSS Styling ------------------------
+#---------------------- CSS Styling ------------------------
 
 st.markdown(""" <style> .title { font-size: 36px; font-weight: bold; color: #0E76A8; } .subtitle { font-size: 18px; color: #444; } .stButton>button { background-color: #0E76A8; color: white; font-weight: bold; border-radius: 8px; padding: 10px 18px; } footer {visibility: hidden;} </style> """, unsafe_allow_html=True)
 
----------------------- Sidebar Navigation ------------------------
+#---------------------- Sidebar Navigation ------------------------
 
 with st.sidebar: selected = option_menu( "\ud83d\udcdc Main Menu", ["\ud83d\udcca Predict", "\ud83d\udcc9 Chart", "\u2139\ufe0f About"], icons=["bar-chart-line", "graph-up", "info-circle"], default_index=0 )
 
----------------------- Default Symbol ------------------------
+#---------------------- Default Symbol ------------------------
 
 default_symbol = "HDFCBANK.NS"
 
----------------------- Feature Generator ------------------------
+#---------------------- Feature Generator ------------------------
 
 def generate_features(df): df['MA_5'] = df['Close'].rolling(5).mean() df['MA_20'] = df['Close'].rolling(20).mean() df['Daily_Return'] = df['Close'].pct_change() delta = df['Close'].diff() gain = delta.where(delta > 0, 0).rolling(14).mean() loss = -delta.where(delta < 0, 0).rolling(14).mean() rs = gain / (loss + 1e-10) df['RSI_14'] = 100 - (100 / (1 + rs)) return df
 
----------------------- About Page ------------------------
+#---------------------- About Page ------------------------
 
 if selected == "\u2139\ufe0f About": st.markdown(""" ### \u2139\ufe0f About the App - Built with \u2764\ufe0f using Streamlit, Plotly, and Machine Learning - Predicts future stock price and trend direction - Features include: - Interactive charts - Technical indicators - Professional UI """) st.stop()
 
----------------------- Prediction Section ------------------------
+#---------------------- Prediction Section ------------------------
 
 if selected == "\ud83d\udcca Predict": col1, col2 = st.columns([3, 1]) with col1: user_symbol = st.text_input("Enter NSE Symbol (e.g. HDFCBANK.NS):", value=default_symbol) with col2: st.write("")
 
