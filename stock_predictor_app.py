@@ -36,7 +36,8 @@ def generate_features(df):
     gain = delta.where(delta > 0, 0).rolling(14).mean() 
     loss = -delta.where(delta < 0, 0).rolling(14).mean()
     rs = gain / (loss + 1e-10)
-    df['RSI_14'] = 100 - (100 / (1 + rs)) return df
+    df['RSI_14'] = 100 - (100 / (1 + rs)) 
+    return df
 
 #---------------------- About Page ------------------------
 
