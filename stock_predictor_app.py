@@ -131,12 +131,23 @@ if st.button("🚀 Predict"):
                 X_target = df_target[features]
                 X_target_scaled = scaler.transform(X_target) if use_scaler else X_target
 
-                price = reg_model.predict(X_target_scaled)[0]
-                trend = clf_model.predict(X_target_scaled)[0]
+                # --- Predict Price and Trend ---
+price = reg_model.predict(X_target_scaled)[0]
+trend = clf_model.predict(X_target_scaled)[0]
 
-                col1, col2 = st.columns(2)
-                col1.metric("💰 Predicted Price", f"₹{price:.2f}")
-                col2.metric("📈 Predicted Trend", "🔺 UP" if trend == 1 else "🔻 DOWN")
+# --- Predictive Confidence Score for Classification ---
+trend_proba = clf_model.predict_proba(X_target_scaled)[0][1]  # Probability of UP (class 1)
+confidence_pct = trend_proba * 100  # Convert to %
+
+# --- Display Metrics ---
+col1, col2 = st.columns(2)
+col1.metric("💰 Predicted Price", f"₹{price:.2f}")
+col2.metric("📈 Predicted Trend", "🔺 UP" if trend == 1 else "🔻 DOWN")
+
+# --- Display Confidence Score ---
+st.markdown("#### 🔍 Prediction Confidence")
+st.progress(int(confidence_pct))
+st.info(f"Confidence: {confidence_pct:.2f}% that the trend is {'UP' if trend == 1 else 'DOWN'}")
 
         except Exception as e:
             st.error(f"Error: {e}")
