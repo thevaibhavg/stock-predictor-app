@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.preprocessing import StandardScaler import plotly.graph_objects as go 
+from sklearn.preprocessing import StandardScaler 
+import plotly.graph_objects as go 
 from streamlit_option_menu import option_menu
 
 st.set_page_config(page_title="Stock Predictor", layout="wide")
