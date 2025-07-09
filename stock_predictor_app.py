@@ -67,7 +67,7 @@ if df.empty:
     st.error(f"No data found for {user_symbol}.")
     st.stop()
 
-df.columns = [col.split("_")[0].strip() if "_" in col else col.strip() for col in df.columns]
+df.columns = [str(col).split("_")[0].strip() if "_" in str(col) else str(col).strip() for col in df.columns]
 
 required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
 missing = [col for col in required_cols if col not in df.columns]
