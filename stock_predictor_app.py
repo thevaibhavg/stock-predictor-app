@@ -1,0 +1,68 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from datetime import datetime, timedelta
+
+# Calculate RSI
+def compute_RSI(series, window=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0).rolling(window=window).mean()
+    loss = -delta.where(delta < 0, 0).rolling(window=window).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+# Create features
+def generate_features(data):
+    data['MA_5'] = data['Close'].rolling(window=5).mean()
+    data['MA_20'] = data['Close'].rolling(window=20).mean()
+    data['RSI_14'] = compute_RSI(data['Close'])
+    data['Daily_Return'] = data['Close'].pct_change()
+    data.dropna(inplace=True)
+    return data
+
+# Train models
+def train_models(data):
+    features = ['Open', 'High', 'Low', 'Close', 'Volume', 'MA_5', 'MA_20', 'RSI_14', 'Daily_Return']
+    X = data[features]
+    y_reg = data['Close'].shift(-1).dropna()
+    y_clf = (data['Close'].shift(-1) > data['Close']).astype(int).dropna()
+    X = X.iloc[:-1]
+    
+    reg_model = RandomForestRegressor(n_estimators=100)
+    clf_model = RandomForestClassifier(n_estimators=100)
+    
+    reg_model.fit(X, y_reg)
+    clf_model.fit(X, y_clf)
+    
+    return reg_model, clf_model, X.iloc[-1:]
+
+# Streamlit App
+st.set_page_config(page_title="📈 Stock Predictor", layout="centered")
+st.title("📈 Stock Price & Trend Predictor")
+symbol = st.text_input("Enter NSE stock symbol (e.g. HDFCBANK.NS):", value="HDFCBANK.NS")
+
+if st.button("Predict"):
+    start = datetime.today() - timedelta(days=365)
+    end = datetime.today()
+    
+    df = yf.download(symbol, start=start, end=end)
+    
+    if df.empty:
+        st.error("Couldn't fetch data. Check stock symbol.")
+    elif len(df) < 50:
+        st.warning("Not enough data for predictions.")
+    else:
+        df = generate_features(df)
+        reg, clf, last = train_models(df)
+        price = reg.predict([last])[0]
+        trend = clf.predict([last])[0]
+        
+        st.subheader("📊 Prediction Result:")
+        st.success(f"Predicted Price: ₹{price:.2f}")
+        st.success(f"Trend: {'🔺 UP' if trend == 1 else '🔻 DOWN'}")
+        
+        st.line_chart(df['Close'][-60:])
+Fix broken Python file
+
